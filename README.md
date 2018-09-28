@@ -1,4 +1,3 @@
-<script type="text/javascript" async src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML"> </script>
 
 # cv-blog
 老和山职业技术学院 CV讨论组
@@ -7,4 +6,3 @@
 ### Week1 - 10.3
 讨论内容：LR,决策树,SVM,Boosting,EM,PCA,HMM,聚类,强化学习
 
-$$\sum{x}$$
