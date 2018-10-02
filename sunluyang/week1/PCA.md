@@ -3,6 +3,10 @@
 > 2018.10.02 Louis
 
 
+
+[TOC]
+
+
 在高维特征空间中，数据样本稀疏，且大多数点都分布在边界处、实例彼此远离，预测的可靠性更低。训练集维度越高，过拟合风险越大。
 
 降维的方法主要有“投影”和“流形学习”。
@@ -36,7 +40,7 @@ PCA 假定数据集以原点为中心，首先样本数据要进行中心化，�
 
 
 再来考虑整个训练集中，原样本点 $x_i$ 与基于投影重构的样本点 $\hat { \boldsymbol { x } } _ { i }$ 直接的距离：
- 
+
 
 $$
 \sum _ { i = 1 } ^ { m } \left\| \sum _ { j = 1 } ^ { d ^ { \prime } } z _ { i j } \boldsymbol { w } _ { j } - \boldsymbol { x } _ { i } \right\| _ { 2 } ^ { 2 } = \sum _ { i = 1 } ^ { m } z _ { i } ^ { \mathrm { T } } \boldsymbol { z } _ { i } - 2 \sum _ { i = 1 } ^ { m } \boldsymbol { z } _ { i } ^ { \mathrm { T } } \mathbf { W } ^ { \mathrm { T } } \boldsymbol { x } _ { i } + \text { const }
@@ -211,13 +215,13 @@ def pca(X):
     X = X - mean_
 
     # Step2: 得到协方差矩阵
-    covMat = np.cov(X,rowvar = 0) # rowvar=False 每列代表一个变量
+    covMat = np.cov(X,rowvar = 0) # rowvar=False 每列代表一个变量
     # 实际上是否去中心化对于得到协方差矩阵无影响， 只是为了方便后续降维
 
     # Step3: 得到特征值和特征向量 eigenvalue, eigenvector
     eigVal,eigVec = sp.linalg.eig(covMat)
 
-# 不用 cov，只用矩阵乘法
+# 不用 cov，只用矩阵乘法
 def pca_dot(X):
     mean_ = np.mean(X, axis=0)
     X = X - mean_
@@ -237,17 +241,17 @@ def pca_dot(X):
 >[奇异值分解 （Wikipedia）](https://zh.wikipedia.org/zh-cn/%E5%A5%87%E5%BC%82%E5%80%BC%E5%88%86%E8%A7%A3)
 > $$X = U \Sigma V ^ { * }$$
 > $U$ 是 $m \times m$ 阶`酉矩阵`,
-> 
+>
 > $\Sigma$ (sigma) 是 $m\times n$ 阶**非负实数对角矩阵**
-> 
+>
 > 而$V^*$，即 $V$ 的**共轭转置**，是 $n \times n$ 阶`酉矩阵`
-> 
+>
 > 这样的分解就称作 $X$ 的**奇异值分解**
-> 
+>
 > 1. $U$ 的 **列** 组成一套对 $X$ 的正交“**输出**”的基向量，这些向量是$X X^T$ 的**特征向量**。 
-> 
+>
 > 2. $\Sigma$ **对角线**上的元素是**奇异值**，可视为是在输入与输出间进行的标量的“**膨胀控制**”。这些是 $X^T X$ 和 $X X^T$ **特征值**的非零平方根，并与$U$ 和 $V$ 的**行向量**相对应。
-> 
+>
 > 3. $V$ 的 **列** 组成一套对 $X$ 的正交“**输入**”或“**分析**”的基向量。这些向量是 $X^T X$ 的**特征向量**。 
 
 
