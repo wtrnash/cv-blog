@@ -23,17 +23,17 @@ sunluyang
     └── PCA.pdf
 ```
 
-由于 Github 不支持 Latex 公式显示, 可以保留一份 Markdown 文件并转一份 PDF, 目录结构如下：
+由于 Github 对 `Markdown` 的预览不支持 `Latex` 公式显示, 可以保留一份 `Markdown` 文件并转一份 `PDF`, Github 可以直接预览 `PDF`.
+
+
 
 
 ## 提示
 
-可以使用 `Typora` 编写并导出 PDF，Mac 用户推荐使用 [Mathpix Snipping Tool](https://itunes.apple.com/cn/app/mathpix-snipping-tool/id1349670778?mt=12) 完成公式编写，或者也可用图片代替。
+推荐使用 `Typora` 编写并导出 PDF，Mac 用户推荐使用 [Mathpix Snipping Tool](https://itunes.apple.com/cn/app/mathpix-snipping-tool/id1349670778?mt=12) 完成公式编写，或者也可用图片代替。
 
 
 导出 PDF 时，最好用 `Typora` 在开头插入 `[TOC]`。
-
-
 
 
 
