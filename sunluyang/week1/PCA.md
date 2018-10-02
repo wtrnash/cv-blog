@@ -26,7 +26,7 @@ Principal Component Analysis 主成分分析是一种常见的降维方法。首
 
 实际上，超平面的这两种性质是等价的。
 
-[这张图能直观地解释](https://img-blog.csdn.net/20160207114645575)
+[这张图能够直观地解释](https://img-blog.csdn.net/20160207114645575)
 
 
 
