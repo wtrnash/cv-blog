@@ -66,7 +66,7 @@ $$
 $$
 <br />
 
-在下面的隐马尔可夫模型中也会用到EM算法。
+在下面的隐马尔可夫模型的参数估计中也会用到EM算法。
 
 <br /><br />
 
@@ -190,7 +190,57 @@ $$i_T^*=\arg\max_{1\leqslant i \leqslant N}\delta_T(i)$$
 $$i_t^*=\Psi_{t+1}(i_{t+1}^*), \;\;t=T-1,T-2,\dots,1$$
 
 ### 3. 参数估计
-待续
+
+参数估计问题，也就是学习问题，可以分为有监督和无监督两种情况讨论。有监督的情况下需要训练数据，比如一系列的状态序列和观测序列的二元组。这种情况下，可以通过统计频率来估计概率，只需要简单的进行统计即可估计出参数。因此，我们主要讨论无监督的情况。
+
+无监督学习的情况，只给出一系列的观测序列，需要通过参数估计的方式确定参数λ。如同我们在第1节提到的那样，针对HMM这种有隐变量的情况，需要使用基于迭代的EM算法，来学习出模型的参数。下面我们来看如何将EM算法运用于HMM模型。
+
+假定观测数据为$O=(o_1,o_2,\dots,o_T)$，隐藏的状态数据为$I=(i_1,i_2,\dots,i_T)$，隐马尔可夫模型的参数为$\lambda=(\pi,A,B)$，迭代过程中估计的参数为$\overline{\lambda}$。
+
+就像前面描述的一样，我们需要先计算Q函数。
+
+$$\begin{aligned}
+    Q(\lambda, \overline{\lambda})
+    &= \sum_{I}logP(O,I|\lambda)P(I|O,\overline{\lambda}) \\
+    &= \sum_{I}logP(O,I|\lambda)\frac{P(O,I|\overline{\lambda})}
+    {P(O|\overline{\lambda})} \\
+    &\Rightarrow \sum_{I}logP(O,I|\lambda)P(O,I|\overline{\lambda})
+\end{aligned}$$
+
+注意公式第3行，由于Q是关于λ的函数，第2行中的$P(O|\overline{\lambda})$与λ无关，所以可以略去常数因子$\frac{1}{P(O|\overline{\lambda})}$，而不影响M步对参数的优化。
+
+P(O,I|λ)可以用π，A，B计算。
+
+$$P(O,I|\lambda)=\pi_{i_1}B(i_1,o_1)A(i_1,i_2)B(i_2,o_2) \dots A(i_{T-1},i_T)B(i_T,o_T)$$
+
+于是将Q函数进一步展开。
+$$\begin{aligned}
+    Q(\lambda, \overline{\lambda}) =& \;\;\;
+    \sum_{I}log\pi_{i_1}P(O,I|\overline{\lambda}) \\
+    &+ \sum_{I} \left( \sum_{t=1}^{T-1} logA(i_t,i_{t+1}) \right)P(O,I|\overline{\lambda}) \\
+    &+ \sum_{I} \left( \sum_{t=1}^{T} logB(i_t,o_t) \right)P(O,I|\overline{\lambda})
+\end{aligned}$$
+
+<br />
+
+上面的过程将Q函数分成三个部分，每个部分只含有单独的π，A，B。因此，可以分别优化π，A，B，对三个部分单独进行极大化。
+
+对于第一部分，求和实际上是对路径的枚举，因此可以进行转化。
+$$\sum_{I}log\pi_{i_1}P(O,I|\overline{\lambda})=
+  \sum_{j=1}^{N}log\pi_jP(O,i_1=q_j|\overline{\lambda})$$
+
+利用约束条件$\sum_{j=1}^{N}\pi_j=1$和拉格朗日乘子法，可以解得
+$$\pi_i=\gamma_1(i)$$
+
+同样，对于A和B，可以解得
+$$A(q_i,q_j)=\frac{\sum_{t=1}^{T-1}\xi_t(i,j)}
+        {\sum_{t=1}^{T-1}\gamma_t(i)}$$
+
+$$B(q_i,o_j)=\frac{\sum_{t=1,o_t=v_j}^{T}\gamma_t(i)}
+        {\sum_{t=1}^{T}\gamma_t(i)}$$
+
+运用上面的公式进行递推直到收敛，就可以得到HMM的参数估计。这个隐马尔可夫模型上的EM算法的具体实现又被称为Baum-Welch算法。
+<br /><br />
 
 ## 3.编程实现
 待续
