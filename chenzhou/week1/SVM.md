@@ -84,7 +84,7 @@ $$
 $$
 L(w,b,\alpha) = \frac{1}{2}{||\vec{w}||^2} +\sum_i^N\alpha_i(1-y_i(w^Tx_i+b) ),\space\space \alpha_i\geq0
 $$
-$L(w,b,\alpha) $对$\alpha,\beta$求极大值，就等价于原目标函数
+$L(w,b,\alpha) $对$\alpha$求极大值，就等价于原目标函数
 
 
 $$
@@ -194,13 +194,13 @@ d^*=L(x^*,\alpha^*,\beta^*)\leq L(x^{*d},\alpha^{*d},\beta^{*d})=p^*
 $$
 ​	定理2:
 
-​		如果 1. $f(x),c_i(x)$ 为凸函数	2. $h_j(x)$ 为仿射函数	3. $c_i(x)$ 严格可行
+​		如果 1. $f(x),c_i(x)$ 为凸函数	2. $h_j(x)$ 为仿射函数(即最高次数为1的多项式函数)	3. $c_i(x)$ 严格可行
 
 ​		那么：
 
 ​	
 $$
-p^*=d^* \space\space\space的充要条件\space\space\space<==> \space\space\space KKT条件：
+1.	一定存在p^*=d^*\\2. \space p^*=d^*\space\space\space的充要条件\space\space\space<==> \space\space\space KKT条件：
 \left\{ \begin{array} { l } { 
 \frac{d}{dx}L(x^*,\alpha^*,\beta^*) = 0
 
@@ -243,14 +243,13 @@ $$
 
 }\\{
     
-(y_i(w^Tx_i+b)-1 )\geq0
+(1-y_i(w^Tx_i+b) )\leq0
     
 }\\{
     \alpha_i\geq0
 }
 \end{array}\right.
 $$
-
 
 ### 1.4 	求解过程
 
@@ -277,7 +276,7 @@ L(w,b,\alpha) = \frac{1}{2}(\sum_i^N\alpha_iy_ix_i)^T\dot{}{(\sum_i^N\alpha_iy_i
 =-\frac{1}{2}\sum_i^N\sum_j^N\alpha_i\alpha_jy_iy_jx_i^Tx_j+\sum_i^N\alpha_i\\
 s.t.\space\sum_i^N \alpha_iy_i=0,\alpha_i\geq0
 $$
-现在参数只剩下$\alpha$，$\alpha$是一个N维的向量，要求：
+现在参数只剩下$\alpha,b$，$\alpha$是一个N维的向量，要求：
 $$
 \max_\alpha L(\alpha)\\
 s.t.\space\sum_i^N \alpha_iy_i=0,\alpha_i\geq0
@@ -438,13 +437,13 @@ $$
 
 最后，又得出以下熟悉的形式
 $$
-\min _ { \alpha } L ( w , b , \xi , \alpha , \mu ) = - \frac { 1 } { 2 } \sum _ { i = 1 } ^ { N } \sum _ { j = 1 } ^ { N } \alpha _ { i } \alpha _ { j } y _ { i } y _ { j } \left( x _ { i } ^T x _ { j } \right) + \sum _ { i = 1 } ^ { N } \alpha _ { i }\\\left. \begin{array} { c l } { \text { s.t. } } & { \sum _ { i = 1 } ^ { N } \alpha _ { i } y _ { i } = 0 } \\ { } & { 0 \leqslant \alpha _ { i } \leqslant C } \end{array} \right.
+\min _ { \alpha } L ( w , b , \xi , \alpha , \mu ) = - \frac { 1 } { 2 } \sum _ { i = 1 } ^ { N } \sum _ { j = 1 } ^ { N } \alpha _ { i } \alpha _ { j } y _ { i } y _ { j } \left( x _ { i } ^T x _ { j } \right) + \sum _ { i = 1 } ^ { N } \alpha _ { i }\\\left. \begin{array} { c l } { \text { s.t. } } & { \sum _ { i = 1 } ^ { N } \alpha _ { i } y _ { i } = 0 } \\ { } & { 0 \leqslant \alpha _ { i } \leqslant C },{C=\alpha_i+\mu_i} \end{array} \right.
 $$
-与之前的推导结果唯一不同的是 $\alpha_i$ 有了上界的限制， 该限制来自于 上述对 $\xi$ 求导的结果 $C - \alpha _ { i } - \mu _ { i } = 0$
+与之前的推导结果唯一不同的是 $\alpha_i​$ 有了上界的限制， 该限制来自于 上述对 $\xi​$ 求导的结果 $C - \alpha _ { i } - \mu _ { i } = 0​$
 
 最后，相应的KKT条件：
 $$
-\left\{\begin{array} { l } {  \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)\geqslant0} \\ {\alpha_i \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)=0  } \\ { \alpha _ { i } \geqslant 0 } \\ { \mu _ { i } \geqslant 0  }\\{\xi_i\geqslant0} \end{array} \right.
+\left\{\begin{array} { l } {  \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)\geqslant0} \\ {\alpha_i \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)=0  } \\ { \alpha _ { i } \geqslant 0 } \\ { \mu _ { i } \geqslant 0  }\\{\xi_i\geqslant0}\\{\mu_i\xi_i=0} \end{array} \right.
 $$
 
 ## 4 	SMO算法
@@ -462,11 +461,11 @@ $$
 $$
 
 $$
-优化目标：\min _ { \alpha } L ( w , b , \xi , \alpha , \mu ) = - \frac { 1 } { 2 } \sum _ { i = 1 } ^ { N } \sum _ { j = 1 } ^ { N } \alpha _ { i } \alpha _ { j } y _ { i } y _ { j } K\left( x _ { i } , x _ { j } \right) + \sum _ { i = 1 } ^ { N } \alpha _ { i }\\\left. \begin{array} { c l } { \text { s.t. } } & { \sum _ { i = 1 } ^ { N } \alpha _ { i } y _ { i } = 0 } \\ { } & { 0 \leqslant \alpha _ { i } \leqslant C } \end{array} \right.\\
+优化目标：\min _ { \alpha } L ( w , b , \xi , \alpha , \mu ) = - \frac { 1 } { 2 } \sum _ { i = 1 } ^ { N } \sum _ { j = 1 } ^ { N } \alpha _ { i } \alpha _ { j } y _ { i } y _ { j } K\left( x _ { i } , x _ { j } \right) + \sum _ { i = 1 } ^ { N } \alpha _ { i }\\\left. \begin{array} { c l } { \text { s.t. } } & { \sum _ { i = 1 } ^ { N } \alpha _ { i } y _ { i } = 0 } \\ { } & { 0 \leqslant \alpha _ { i } \leqslant C } ,{C=\alpha_i+\mu_i}\end{array} \right.\\
 $$
 
 $$
-KKT条件：\left\{\begin{array} { l } {  \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)\geqslant0} \\ {\alpha_i \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)=0  } \\ { \alpha _ { i } \geqslant 0 } \\ { \mu _ { i } \geqslant 0  }\\{\xi_i\geqslant0} \end{array} \right.
+KKT条件：\left\{\begin{array} { l } {  \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)\geqslant0} \\ {\alpha_i \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)=0  } \\ { \alpha _ { i } \geqslant 0 } \\ { \mu _ { i } \geqslant 0  }\\{\xi_i\geqslant0}\\{\mu_i\xi_i=0} \end{array} \right.
 $$
 
 计算步骤：
@@ -485,16 +484,46 @@ $$
 
 
 $$
-\alpha_v<C \space\space\space and \space\space\space E_v <-\varepsilon \\or\\
-0<\alpha_v \space\space\space and \space\space\space E_v >\varepsilon\\
+\alpha_v<C \space\space\space and \space\space\space y_i(x_i)E_v <-\varepsilon \\or\\
+0<\alpha_v \space\space\space and \space\space\space  y_i(x_i)E_v >\varepsilon\\
 $$
 $$
 \space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space\space---(3)
 $$
 
+
+
 ​		如果找不到，退出循环，优化结束
 
 ​		有些算法用随机选择的方法选择第一$\alpha_v$ 这样的做法收敛较慢
+
+
+
+> 面试题：什么是最不满足KKT条件的$\alpha_i$
+>
+> 我们这里说的条件 主要是松弛互补条件，即
+>
+> $\alpha_i \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)=0$
+>
+> 转换形式：
+>
+> $\alpha_i \left( y _ { i }( f(x_i)-y_i(x))+ \xi _ { i } \right)=0\\=>\alpha_i(y_i(x_i)E_i+\xi_i)=0$
+>
+> 我们考虑最重要的几个$\alpha_i$，即支持向量样本点对于的$\alpha_i$
+>
+> 因为${ 0 \leqslant \alpha _ { i } \leqslant C } $,$C=\alpha_i+\mu_i$,$\mu_i\xi_i=0$,$\alpha_i \left( y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i } \right)=0$
+>
+> 当$\alpha_i=0$ 时，对$y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i }$ 没有约束，即不是特殊的分类点
+>
+> 当$\alpha_i=C$时，$y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i }$ 一定等于0，则样本落在软间隔内部
+>
+> 当$0<\alpha_i<C$时，$y _ { i } \left( w \cdot x _ { i } + b \right) - 1 + \xi _ { i }$ 一定等于0，且$\xi_i$一定为0，该点为支持向量
+>
+> 最不满足KKT条件的点优先选择 <u>那些不满足KKT条件的支持向量</u>
+>
+> $0<\alpha_i<C$的情况下，$\xi_i$一定为0，那么只要$y_i(x_i)E_i$不等于0，那么$\alpha_i$就是违法KKT条件
+
+
 
 ​	4.     根据选择出来的$\alpha_v$ 循环寻找$\alpha_w$ 使得 $|E_v-E_w|$ 最大
 
