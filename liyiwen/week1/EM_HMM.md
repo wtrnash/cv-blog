@@ -135,7 +135,39 @@ $$\alpha_{t+1}(i)=\left[\sum_j\alpha_t(j)A(q_j,q_i)\right]B(q_i,o_{t+1}), \;\;i=
 对时刻T时的所有可能的状态的前向概率进行加总，得到P(O|λ).
 $$P(O|\lambda)=\sum_i\alpha_T(i)$$
 
-可以明显的可以感觉到有一个动态规划的过程，假定有动态规划的数组dp，dp[t][i]即为$\alpha_t(i)$，通过递推从左至右，从上到下的填满整个dp数组。
+可以明显的可以感觉到有一个动态规划的过程，假定有动态规划的数组dp，dp[t][i]即为$\alpha_t(i)$，通过递推从左至右，从上到下的填满整个dp数组。代码如下：
+```python
+def forward(pi, A, B, O):
+    """forward algorithm for HMM
+
+    Args:
+        pi: initial probability
+        A: state transition matrix
+        B: observation emission matrix
+        O: observation sequence
+    Returns:
+        forward probability matrix alpha
+    """
+    N, M = B.shape
+    T = O.shape[0]
+    
+    alpha = np.zeros((T, N))
+    alpha[0,:] = pi * B[:, O[0]]
+
+    for t in range(1, T):
+        alpha[t, :] = alpha[t-1, :].dot(A) * B[:, O[t]]
+    
+    return alpha
+
+def oseqProb(alpha):
+    """ calc P(O|lambda)
+
+    Returns:
+        the probability that the observation sequences
+        occur given parameters lambda
+    """
+    return np.sum(alpha[-1])
+```
 
 <br />
 
@@ -154,6 +186,36 @@ $$\begin{aligned}
     &=\frac{P(i_t=q_i,i_{t+1}=q_j,O|\lambda)}{P(O|\lambda)} \\
     &=\frac{\alpha_t(i)A(q_i,q_j)B(q_j,o_{t+1})\beta_{t+1}(j)}{P(O|\lambda)}
 \end{aligned}$$
+
+代码如下：
+```python
+def getGamma(alpha, beta):
+    """ calc gamma values
+
+    Returns:
+        A probability matrix that gamma[t,i] is the
+        probability that the state at time t is
+        definitely i given observation sequences and
+        Model parameters lambda.
+    """
+    return (alpha * beta) / oseqProb(alpha)
+
+
+def getKsi(A, B, alpha, beta, O):
+    """calc ksi values
+    Returns:
+        ksi probability tensor
+    """
+    N, M = B.shape
+    T = alpha.shape[0]
+
+    xi = np.zeros((T-1, N, N))
+    for t in range(T-1):
+        xi[t,:,:] = np.outer(alpha[t], beta[t+1]*B[:, O[t+1]]) * A
+        xi[t,:,:] /= np.sum(xi[t,:,:]) 
+    
+    return xi
+```
 
 <br /><br />
 
@@ -188,6 +250,35 @@ $$i_T^*=\arg\max_{1\leqslant i \leqslant N}\delta_T(i)$$
 
 利用ψ，可以逐步回溯，求出完整最优路径。
 $$i_t^*=\Psi_{t+1}(i_{t+1}^*), \;\;t=T-1,T-2,\dots,1$$
+
+代码如下：
+```python
+def decode(pi, A, B, O):
+    """ decode
+    Returns:
+        the most likely state sequence given observation
+        sequence O and HMM parameters lambda
+    """
+    N, M = B.shape
+    T = O.shape[0]
+
+    delta = np.zeros((T,N))
+    psi = np.zeros((T,N))
+
+    delta[0, :] = pi * B[:, O[0]]
+    for t in range(1, T):
+        for i in range(N):
+            delta[t, i] = np.max(delta[t-1] * A[:, i]) * B[i, O[t]]
+            psi[t, i] = np.argmax(delta[t-1] * A[:, i])
+    
+    I = [0] * T
+    I[T-1] = np.argmax(delta[T-1])
+
+    for t in range(T-2, -1, -1):
+        I[t] = psi[t+1, I[t+1]]
+    
+    return I
+```
 
 ### 3. 参数估计
 
@@ -240,12 +331,33 @@ $$B(q_i,o_j)=\frac{\sum_{t=1,o_t=v_j}^{T}\gamma_t(i)}
         {\sum_{t=1}^{T}\gamma_t(i)}$$
 
 运用上面的公式进行递推直到收敛，就可以得到HMM的参数估计。这个隐马尔可夫模型上的EM算法的具体实现又被称为Baum-Welch算法。
-<br /><br />
 
-## 3.编程实现
-待续
+代码如下：
 ```python
-pass
+def maximization(pi, A, B, O):
+    """ get new parameters
+    Returns:
+        new parameters that maximize function Q
+    """
+    alpha = forward(pi, A, B, O)
+    beta = backward(pi, A, B, O)
+
+    N, M = B.shape
+    T = O.shape[0]
+
+    gamma = getGamma(alpha, beta)
+    ksi = getKsi(A, B, alpha, beta, O)
+
+    new_pi = gamma[0, :]
+    new_A = np.sum(ksi, axis=0) / \
+            np.sum(gamma[0:T-1, :], axis=0).reshape([N, 1])
+    
+    new_B = np.zeros((N, M))
+    for j in range(M):
+        new_B[:, j] = np.sum((O == j).reshape([T, 1]) * gamma, axis=0)
+        new_B[:, j] /= np.sum(gamma, axis=0)
+    
+    return new_pi, new_A, new_B
 ```
 <br /><br />
 
@@ -255,7 +367,7 @@ pass
 --------------
 ## 参考文献：
 1. [What is the expectation maximization algorithm?](http://ai.stanford.edu/~chuongdo/papers/em_tutorial.pdf)
-2. [【深度剖析HMM（附Python代码）】 --CSDN](https://blog.csdn.net/tostq/article/details/70846702)
+2. [tostq/Easy_HMM --Github Repo](https://github.com/tostq/Easy_HMM)
 3. 李航. 统计学习方法[M]. 清华大学出版社, 2012
 4. [Markov chain - Wikipedia](https://en.wikipedia.org/wiki/Markov_chain)
 5. [The Basic of Hidden Markov Model](https://sambaiga.github.io/2017/05/03/hmm-intro.html)
