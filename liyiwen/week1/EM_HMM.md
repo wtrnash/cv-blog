@@ -66,7 +66,7 @@ $$
 $$
 <br />
 
-在下面的隐马尔可夫模型中也会用到EM算法。
+在下面的隐马尔可夫模型的参数估计中也会用到EM算法。
 
 <br /><br />
 
@@ -135,7 +135,39 @@ $$\alpha_{t+1}(i)=\left[\sum_j\alpha_t(j)A(q_j,q_i)\right]B(q_i,o_{t+1}), \;\;i=
 对时刻T时的所有可能的状态的前向概率进行加总，得到P(O|λ).
 $$P(O|\lambda)=\sum_i\alpha_T(i)$$
 
-可以明显的可以感觉到有一个动态规划的过程，假定有动态规划的数组dp，dp[t][i]即为$\alpha_t(i)$，通过递推从左至右，从上到下的填满整个dp数组。
+可以明显的可以感觉到有一个动态规划的过程，假定有动态规划的数组dp，dp[t][i]即为$\alpha_t(i)$，通过递推从左至右，从上到下的填满整个dp数组。代码如下：
+```python
+def forward(pi, A, B, O):
+    """forward algorithm for HMM
+
+    Args:
+        pi: initial probability
+        A: state transition matrix
+        B: observation emission matrix
+        O: observation sequence
+    Returns:
+        forward probability matrix alpha
+    """
+    N, M = B.shape
+    T = O.shape[0]
+    
+    alpha = np.zeros((T, N))
+    alpha[0,:] = pi * B[:, O[0]]
+
+    for t in range(1, T):
+        alpha[t, :] = alpha[t-1, :].dot(A) * B[:, O[t]]
+    
+    return alpha
+
+def oseqProb(alpha):
+    """ calc P(O|lambda)
+
+    Returns:
+        the probability that the observation sequences
+        occur given parameters lambda
+    """
+    return np.sum(alpha[-1])
+```
 
 <br />
 
@@ -154,6 +186,36 @@ $$\begin{aligned}
     &=\frac{P(i_t=q_i,i_{t+1}=q_j,O|\lambda)}{P(O|\lambda)} \\
     &=\frac{\alpha_t(i)A(q_i,q_j)B(q_j,o_{t+1})\beta_{t+1}(j)}{P(O|\lambda)}
 \end{aligned}$$
+
+代码如下：
+```python
+def getGamma(alpha, beta):
+    """ calc gamma values
+
+    Returns:
+        A probability matrix that gamma[t,i] is the
+        probability that the state at time t is
+        definitely i given observation sequences and
+        Model parameters lambda.
+    """
+    return (alpha * beta) / oseqProb(alpha)
+
+
+def getKsi(A, B, alpha, beta, O):
+    """calc ksi values
+    Returns:
+        ksi probability tensor
+    """
+    N, M = B.shape
+    T = alpha.shape[0]
+
+    xi = np.zeros((T-1, N, N))
+    for t in range(T-1):
+        xi[t,:,:] = np.outer(alpha[t], beta[t+1]*B[:, O[t+1]]) * A
+        xi[t,:,:] /= np.sum(xi[t,:,:]) 
+    
+    return xi
+```
 
 <br /><br />
 
@@ -189,13 +251,113 @@ $$i_T^*=\arg\max_{1\leqslant i \leqslant N}\delta_T(i)$$
 利用ψ，可以逐步回溯，求出完整最优路径。
 $$i_t^*=\Psi_{t+1}(i_{t+1}^*), \;\;t=T-1,T-2,\dots,1$$
 
-### 3. 参数估计
-待续
-
-## 3.编程实现
-待续
+代码如下：
 ```python
-pass
+def decode(pi, A, B, O):
+    """ decode
+    Returns:
+        the most likely state sequence given observation
+        sequence O and HMM parameters lambda
+    """
+    N, M = B.shape
+    T = O.shape[0]
+
+    delta = np.zeros((T,N))
+    psi = np.zeros((T,N))
+
+    delta[0, :] = pi * B[:, O[0]]
+    for t in range(1, T):
+        for i in range(N):
+            delta[t, i] = np.max(delta[t-1] * A[:, i]) * B[i, O[t]]
+            psi[t, i] = np.argmax(delta[t-1] * A[:, i])
+    
+    I = [0] * T
+    I[T-1] = np.argmax(delta[T-1])
+
+    for t in range(T-2, -1, -1):
+        I[t] = psi[t+1, I[t+1]]
+    
+    return I
+```
+
+### 3. 参数估计
+
+参数估计问题，也就是学习问题，可以分为有监督和无监督两种情况讨论。有监督的情况下需要训练数据，比如一系列的状态序列和观测序列的二元组。这种情况下，可以通过统计频率来估计概率，只需要简单的进行统计即可估计出参数。因此，我们主要讨论无监督的情况。
+
+无监督学习的情况，只给出一系列的观测序列，需要通过参数估计的方式确定参数λ。如同我们在第1节提到的那样，针对HMM这种有隐变量的情况，需要使用基于迭代的EM算法，来学习出模型的参数。下面我们来看如何将EM算法运用于HMM模型。
+
+假定观测数据为$O=(o_1,o_2,\dots,o_T)$，隐藏的状态数据为$I=(i_1,i_2,\dots,i_T)$，隐马尔可夫模型的参数为$\lambda=(\pi,A,B)$，迭代过程中估计的参数为$\overline{\lambda}$。
+
+就像前面描述的一样，我们需要先计算Q函数。
+
+$$\begin{aligned}
+    Q(\lambda, \overline{\lambda})
+    &= \sum_{I}logP(O,I|\lambda)P(I|O,\overline{\lambda}) \\
+    &= \sum_{I}logP(O,I|\lambda)\frac{P(O,I|\overline{\lambda})}
+    {P(O|\overline{\lambda})} \\
+    &\Rightarrow \sum_{I}logP(O,I|\lambda)P(O,I|\overline{\lambda})
+\end{aligned}$$
+
+注意公式第3行，由于Q是关于λ的函数，第2行中的$P(O|\overline{\lambda})$与λ无关，所以可以略去常数因子$\frac{1}{P(O|\overline{\lambda})}$，而不影响M步对参数的优化。
+
+P(O,I|λ)可以用π，A，B计算。
+
+$$P(O,I|\lambda)=\pi_{i_1}B(i_1,o_1)A(i_1,i_2)B(i_2,o_2) \dots A(i_{T-1},i_T)B(i_T,o_T)$$
+
+于是将Q函数进一步展开。
+$$\begin{aligned}
+    Q(\lambda, \overline{\lambda}) =& \;\;\;
+    \sum_{I}log\pi_{i_1}P(O,I|\overline{\lambda}) \\
+    &+ \sum_{I} \left( \sum_{t=1}^{T-1} logA(i_t,i_{t+1}) \right)P(O,I|\overline{\lambda}) \\
+    &+ \sum_{I} \left( \sum_{t=1}^{T} logB(i_t,o_t) \right)P(O,I|\overline{\lambda})
+\end{aligned}$$
+
+<br />
+
+上面的过程将Q函数分成三个部分，每个部分只含有单独的π，A，B。因此，可以分别优化π，A，B，对三个部分单独进行极大化。
+
+对于第一部分，求和实际上是对路径的枚举，因此可以进行转化。
+$$\sum_{I}log\pi_{i_1}P(O,I|\overline{\lambda})=
+  \sum_{j=1}^{N}log\pi_jP(O,i_1=q_j|\overline{\lambda})$$
+
+利用约束条件$\sum_{j=1}^{N}\pi_j=1$和拉格朗日乘子法，可以解得
+$$\pi_i=\gamma_1(i)$$
+
+同样，对于A和B，可以解得
+$$A(q_i,q_j)=\frac{\sum_{t=1}^{T-1}\xi_t(i,j)}
+        {\sum_{t=1}^{T-1}\gamma_t(i)}$$
+
+$$B(q_i,o_j)=\frac{\sum_{t=1,o_t=v_j}^{T}\gamma_t(i)}
+        {\sum_{t=1}^{T}\gamma_t(i)}$$
+
+运用上面的公式进行递推直到收敛，就可以得到HMM的参数估计。这个隐马尔可夫模型上的EM算法的具体实现又被称为Baum-Welch算法。
+
+代码如下：
+```python
+def maximization(pi, A, B, O):
+    """ get new parameters
+    Returns:
+        new parameters that maximize function Q
+    """
+    alpha = forward(pi, A, B, O)
+    beta = backward(pi, A, B, O)
+
+    N, M = B.shape
+    T = O.shape[0]
+
+    gamma = getGamma(alpha, beta)
+    ksi = getKsi(A, B, alpha, beta, O)
+
+    new_pi = gamma[0, :]
+    new_A = np.sum(ksi, axis=0) / \
+            np.sum(gamma[0:T-1, :], axis=0).reshape([N, 1])
+    
+    new_B = np.zeros((N, M))
+    for j in range(M):
+        new_B[:, j] = np.sum((O == j).reshape([T, 1]) * gamma, axis=0)
+        new_B[:, j] /= np.sum(gamma, axis=0)
+    
+    return new_pi, new_A, new_B
 ```
 <br /><br />
 
@@ -205,7 +367,7 @@ pass
 --------------
 ## 参考文献：
 1. [What is the expectation maximization algorithm?](http://ai.stanford.edu/~chuongdo/papers/em_tutorial.pdf)
-2. [【深度剖析HMM（附Python代码）】 --CSDN](https://blog.csdn.net/tostq/article/details/70846702)
+2. [tostq/Easy_HMM --Github Repo](https://github.com/tostq/Easy_HMM)
 3. 李航. 统计学习方法[M]. 清华大学出版社, 2012
 4. [Markov chain - Wikipedia](https://en.wikipedia.org/wiki/Markov_chain)
 5. [The Basic of Hidden Markov Model](https://sambaiga.github.io/2017/05/03/hmm-intro.html)
