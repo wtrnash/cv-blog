@@ -48,3 +48,9 @@ sunluyang
 - 陈泽平 Boosting
 - 贾鑫康 强化学习
 
+### Week2 - 10.17
+
+
+- 陈洲 Mask R-CNN
+- 李懿文 Fast R-CNN
+- 邢欣 Xgboost
