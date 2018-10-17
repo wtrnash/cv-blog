@@ -143,22 +143,99 @@ SPP的思想很简单。可以注意到池化操作没有权重，只要适当�
 
 将图片映射到特征图实际上是将图片的角点映射到特征图。假设每一个卷积层都使用了$\lfloor p/2 \rfloor$大小的padding，p是卷积核的大小。
 
-假设特征图中的一个点的位置为$(x',y')$，那么这个点在对应图像中的位置为$(Sx',Sy')$，其中S为各层中步长(stride)的累加。因此，对于一个区域，给定图像中的区域左上角的点，对应特征图中的位置为
+假设特征图中的一个点的位置为$(x',y')$，那么这个点在对应图像中的位置为$(Sx',Sy')$，其中S为各层中步长(stride)的乘积。因此，对于一个区域，给定图像中的区域左上角的点，对应特征图中的位置为
 $$
     x'=\lfloor x/S \rfloor + 1
 $$
 右下角的点，位置为
 $$
-    x'=\lfloor x/S \rfloor - 1
+    x'=\lceil x/S \rceil - 1
 $$
 
 <br /><br />
 
 ## 3. fast R-CNN
 
+原始的R-CNN的训练过程是多阶段的，并且训练速度和推断速度非常慢。SPPNet一定程度上解决了第二个问题。Fast R-CNN结合SPPNet的思路，进一步加快了R-CNN的训练速度和推断速度，并通过设置一个multi-task loss，将训练过程整合为一个阶段。
+
+![fast-rcnn](res/fast-rcnn.png)
+
+具体来说，Fast RCNN将图片通入CNN提取特征，类似于SPP，对于提出的每一个RoI，通过RoI pooling层，将特征池化为一个固定大小的向量。再通过一些全连接层后，分别产生两个输出，一个是softmax分类器，一个是每个类的选框回归器。使用这两个输出定义一个multi-task损失函数，同时训练整个网络。
+
+<br />
+
+我们来分别考察这些过程的细节。
+
+### (1) RoI pooling
+
+RoI pooling实际上就是SPP的简化情况，RoI pooling只取空间金字塔中的一层。对于任意大小的特征图，RoI pooling固定将特征图分为H×W个子图，对每个子图进行最大池化，产生一个大小固定为H×W的特征。
+
+Fast RCNN中我们需要对整个网络进行训练，因此需要对RoI pooling反向传播。
+
+形式化地来说，设$x_i\in R$是RoI pooling层的第i个输入，$y_{rj}$是第r个RoI的第j个输出，$\mathcal{R}(r,j)$是第r个RoI的第j个输出区域的索引集合。RoI pooling层的正向过程为
+$$
+    y_{rj}=x_{i^*(r,j)} \\
+    i^*(r,j)=\arg \max_{i'\in \mathcal{R(r,j)}}x_{i'}
+$$
+
+反向传播过程为
+$$
+    \frac{\partial L}{\partial x_i}=\sum_r\sum_j[i=i^*(r,j)]\frac{\partial L}{\partial y_{rj}}
+$$
+也就是说，损失函数对特征图的第i个特征的偏导，是该特征是池化的激活值时的损失函数对池化输出的偏导的累加。
+
+<br />
+
+### (2) 预训练模型
+
+原始论文尝试了三种网络结构，AlexNet，VGG_CNN_M_1024以及VGG16.
+这里的网络结构仍然可以替换成别的深度卷积网络。但为了适应Fast RCNN的任务，需要稍微调整一下网络结构。
+
+首先，最后一个池化层需要替换成上述的RoI pooling层，RoI pooling的预设的参数H和W要跟全连接层的大小相适应。
+然后，网络的最后一层softmax需要替换成两个平行的层，一个是加上了背景类的softmax分类器，一个是bounding box回归器。
+最后，数据的输入修改成一系列图片和图片对应的RoIs。
+
+<br />
+
+### (3) multi-task损失
+
+Fast RCNN的网络最后有两个平行的输出层，一个是K+1类的softmax分类器，产生概率向量$p=(p_0,p_1,\dots,p_K)$，一个是bounding box回归器，回归器与R-CNN中的一致，每一个类产生4个偏移量$t=(t_x,t_y,t_w,t_h)$
+
+multi-task损失就是两个输出的损失的相加。给定一个标签u和选框v，损失函数为
+$$
+    L(p,u,t^u,v)=L_{cls}(p,u)+\lambda[u\geq1]L_{loc}(t^u,v) \\
+    L_{cls}(p,u)=-\log p_u
+$$
+
+bounding box回归的损失为
+$$
+    L_{loc}(t^u,v)=\sum_{i\in {x,y,w,h}}{\rm smooth}_{ L_1}(t_i^u-v_i) \\
+    {\rm smooth}_{L_1}(x) = \begin{cases}
+        0.5x^2& {\rm if}\; |x|<1 \\
+        |x|-0.5& {\rm otherwise}
+    \end{cases}
+$$
+
+softmax的损失为简单的负对数概率，回归器的损失则为平滑过的L1范数。经过平滑后，损失函数的健壮性更好，并且比使用L2范数更容易收敛。
+
+λ是一个用来控制两个损失函数的比例的参数，实验中直接设置为1。
+
+<br />
+
+### (4) 训练样本
+
+训练样本的选取对模型的训练非常重要。先来分析一下为什么SPPNet不能对SPP进行求导。根本原因在于SPPNet的训练样本RoI来自不同的图片，这会导致大量的计算，因此在计算上不可行。计算效率低的问题，同时来源于RoI的感受野太大。所谓感受野(receptive fields)是指某层的一个输出对应的上层的区域。RoI的感受野往往会追溯到整张图片，这也导致了大量计算。
+
+![receptive-fields](res/receptive_field.jpg)
+
+Fast RCNN通过在训练时共享特征来解决这个问题。Fast RCNN中，SGD的mini-batch在采样时尽量使用同一张图片的RoI，具体做法是，先采样N张图片，然后对每张图片采样R/N个RoI。来自同一张图片的RoI可以共享计算结果。N越小，计算量越小，论文中取了N=2,R=128。
+
+采样时，25%的样本会从与标签的IoU>0.5的候选区域中选取，作为前景样本，剩下的样本从IoU在区间[0.1,0.5)的候选区域中选，作为背景样本。z这里的下限是0.1，因为Fast RCNN认为与标签稍微有交集的RoI是更重要的样本，这是一种hard example mining的策略。
+
+<br />
 
 ## 4. faster R-CNN
-
+暂略
 
 -------
 
@@ -169,3 +246,4 @@ $$
 Neural Networks](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf)
 5. [Spatial Pyramid Pooling in Deep Convolutional
 Networks for Visual Recognition](https://arxiv.org/pdf/1406.4729.pdf)
+6. [Fast R-CNN](https://arxiv.org/pdf/1504.08083.pdf)
